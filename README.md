@@ -1,5 +1,5 @@
 # Epicor SSRS REST Example
-This project was intended to serve as the basis for a blog post I am working on at my website (gingerhelp.com) regarding the use of the Epicor REST API.  At the moment you can see how it allows you to pull up your reports from system monitor and view any of them.  I was also hoping to show how a report request could be submitted (i.e. generate a sales order acknowledgement) but I am finding that Epicor Cloud MT customers seem to access the SubmitToAgent method (unless I am doing it wrong).  Regardless, I am publishing this in case any of the work here is helpful to anybody.
+This project will eventaually be turned into a blog post, but for the time being it is a repository set to show you how you can use the Epicor REST API via example of loading and submitting reports to the system task agent.
 
 ## Installation
 This is a Node.JS project so to run this project you will need to do the following:
@@ -24,3 +24,6 @@ npm run start
 ```
 
 5. Now navigate to http://localhost:3000 to test it out.
+
+## Setup
+You need to input an API key when you pull this up.  You generate that from API Key Maintenance within Epicor.  Ensure that the Access Scope that yuo configure has access to the ERP.Rpt.SalesOrderAck service.  Then add the SubmitToAgent method.

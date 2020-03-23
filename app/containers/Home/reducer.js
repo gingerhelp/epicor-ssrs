@@ -33,6 +33,7 @@ const reportListingReducer = (state = initialState, action) =>
         draft.reportListingWhereClause = action.whereClause;
         break;
       case SELECT_REPORT:
+        console.log(action);
         draft.selectedSysRowId = action.sysRowId;
         break;
       case UPDATE_REPORT_LISTING:

@@ -1,7 +1,7 @@
-import { all, call, put, select, takeEvery } from 'redux-saga/effects';
+import { all, call, delay, put, select, takeEvery } from 'redux-saga/effects';
 import request from 'utils/request';
 import { GENERATE_SO, GET_REPORT_LISTING, SELECT_REPORT } from './constants';
-import { updateReportListing } from './actions';
+import { selectReport, updateReportListing } from './actions';
 import {
   makeSelectCredentials,
   makeSelectReportListingWhereClause,
@@ -21,15 +21,20 @@ export function* updateLocalStorage() {
 }
 
 export function* generateSO() {
-  const { apiKey, company, password, server, username } = yield select(
-    makeSelectCredentials()
-  );
+  // const { apiKey, company, password, server, username } = yield select(
+  //   makeSelectCredentials()
+  // );
+  const credentials = yield select(makeSelectCredentials());
   const salesOrderNumber = yield select(makeSelectSelectedSalesOrderNumber());
-  const basicAuth = Buffer.from(`${username}:${password}`).toString('base64');
+  const basicAuth = Buffer.from(
+    `${credentials.username}:${credentials.password}`
+  ).toString('base64');
   try {
-    const resp = yield call(
+    yield call(
       request,
-      `${server}/api/v2/odata/${company}/Erp.RPT.SalesOrderAckSvc/SubmitToAgent`,
+      `${credentials.server}/api/v2/odata/${
+        credentials.company
+      }/Erp.RPT.SalesOrderAckSvc/SubmitToAgent`,
       {
         method: 'POST',
         body: JSON.stringify({
@@ -41,11 +46,12 @@ export function* generateSO() {
                 AutoAction: 'SSRSPREVIEW',
                 PrinterName: '',
                 AgentSchedNum: '0',
-                AgentID: 'System Task Agent',
+                AgentID: '',
                 AgentTaskNum: 0,
                 RecurringTask: false,
-                ReportStyleNum: 1001,
-                WorkstationID: 'ADAMELLISDDE7 1',
+                ReportStyleNum: 1112,
+                WorkstationID: credentials.username,
+                TaskNote: salesOrderNumber, // Store an ID here we can easily locate by
                 DateFormat: 'm/d/yyyy',
                 NumericFormat: ',.',
                 ProcessTaskNum: '0',
@@ -59,7 +65,7 @@ export function* generateSO() {
               }
             ]
           },
-          agentID: 'System Task Agent',
+          agentID: 'SystemTaskAgent',
           agentSchedNum: 0,
           agentTaskNum: 0,
           maintProgram: 'Erp.UIRpt.SalesOrderAck'
@@ -68,11 +74,38 @@ export function* generateSO() {
           'Content-Type': 'application/json',
           Accept: 'application/json',
           Authorization: `Basic ${basicAuth}`,
-          'x-api-key': apiKey
+          'x-api-key': credentials.apiKey
         }
       }
     );
-    console.log(resp);
+
+    // Now get the report listing so we can get the SysRowId for this newly generated report
+    const getList = yield call(
+      request,
+      `${credentials.server}/api/v2/odata/${
+        credentials.company
+      }/Ice.BO.ReportMonitorSvc/GetList`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          whereClause: `RptNote = '${salesOrderNumber}'`, // TaskNote converts to RptNote when it hits system monitor
+          pageSize: 0,
+          absolutePage: 0
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Basic ${basicAuth}`,
+          'x-api-key': credentials.apiKey
+        }
+      }
+    );
+
+    if (getList.returnObj.SysRptLstList.length > 0) {
+      yield put(
+        selectReport(credentials, getList.returnObj.SysRptLstList[0].SysRowID)
+      );
+    }
   } catch (error) {
     console.log(error);
   }
@@ -109,7 +142,7 @@ export function* getReportListing() {
   }
 }
 
-export function* selectReport() {
+export function* selectedReport() {
   const { apiKey, company, password, server, username } = yield select(
     makeSelectCredentials()
   );
@@ -148,6 +181,6 @@ export default function* reportListingSaga() {
     takeEvery([GENERATE_SO, GET_REPORT_LISTING], updateLocalStorage),
     takeEvery(GENERATE_SO, generateSO),
     takeEvery(GET_REPORT_LISTING, getReportListing),
-    takeEvery(SELECT_REPORT, selectReport)
+    takeEvery(SELECT_REPORT, selectedReport)
   ]);
 }
