@@ -1,4 +1,5 @@
-import { all, call, delay, put, select, takeEvery } from 'redux-saga/effects';
+/* eslint-disable no-console */
+import { all, call, put, select, takeEvery } from 'redux-saga/effects';
 import request from 'utils/request';
 import { GENERATE_SO, GET_REPORT_LISTING, SELECT_REPORT } from './constants';
 import { selectReport, updateReportListing } from './actions';
